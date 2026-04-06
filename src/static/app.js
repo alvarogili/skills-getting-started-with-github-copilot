@@ -20,11 +20,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        let participantsHTML = '';
+        if (details.participants.length > 0) {
+          participantsHTML = `
+            <div class="participants-section">
+              <strong>Participants:</strong>
+              <ul class="participants-list">
+                ${details.participants.map(p => `
+                  <li>
+                    <span class="participant-name">${p}</span>
+                    <button class="delete-participant" data-activity="${name}" data-email="${p}" aria-label="Remove participant">×</button>
+                  </li>
+                `).join('')}
+              </ul>
+            </div>
+          `;
+        }
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          ${participantsHTML}
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +80,8 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities to show the new participant
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -78,6 +98,33 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
       console.error("Error signing up:", error);
+    }
+  });
+
+  // Handle participant deletion
+  activitiesList.addEventListener("click", async (event) => {
+    if (event.target.classList.contains("delete-participant")) {
+      const activity = event.target.dataset.activity;
+      const email = event.target.dataset.email;
+
+      try {
+        const response = await fetch(
+          `/activities/${encodeURIComponent(activity)}/signup?email=${encodeURIComponent(email)}`,
+          {
+            method: "DELETE",
+          }
+        );
+
+        if (response.ok) {
+          // Refresh activities list
+          fetchActivities();
+        } else {
+          const result = await response.json();
+          console.error("Error removing participant:", result.detail);
+        }
+      } catch (error) {
+        console.error("Error removing participant:", error);
+      }
     }
   });
 
